@@ -1,23 +1,20 @@
+
 services:
   - type: web
     name: livre-smart-library
     runtime: python
-    plan: starter
+    plan: free
     region: singapore
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --chdir backend --workers 1 --threads 4 --bind 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /healthz
-    disk:
-      name: livre-library-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
       - key: PYTHON_VERSION
         value: 3.12.10
       - key: DATABASE_PATH
-        value: /var/data/library.sqlite3
+        value: /tmp/library.sqlite3
       - key: SECRET_KEY
         generateValue: true
       - key: INITIAL_USER_USERNAME
