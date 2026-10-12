@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173D35"><title>LIVRE — Your Reading Space</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="https://unpkg.com/lucide@latest" defer></script><script src="/js/app.js" defer></script>
+</head>
+<body class="app-page">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand brand-light" href="#dashboard" aria-label="LIVRE home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 7c5-2 9 0 12 3v16c-3-3-7-5-12-3V7Zm24 0c-5-2-9 0-12 3v16c3-3 7-5 12-3V7Z"/><path d="M8 11c2 0 4 1 5 2m11-2c-2 0-4 1-5 2"/></svg></span><span class="wordmark">LIVRE</span></a>
+    <div class="side-caption">YOUR LIBRARY</div>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="#dashboard" data-page="dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a href="#search" data-page="search"><i data-lucide="search"></i>Search Books</a>
+      <a href="#borrow" data-page="borrow"><i data-lucide="book-open-check"></i>Borrow Books</a>
+      <a href="#reports" data-page="reports"><i data-lucide="chart-no-axes-combined"></i>Generate Report</a>
+    </nav>
+    <div class="sidebar-bottom"><div class="side-quote">“A room without books is like a body without a soul.”<small>— Cicero</small></div>
+      <button id="logout" class="logout"><i data-lucide="log-out"></i>Sign out</button></div>
+  </aside>
+  <main class="main-area"><header class="topbar"><button class="mobile-menu" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu"></i></button>
+    <div><p class="crumb"><span>LIVRE</span><span aria-hidden="true">/</span><b id="crumb-title">Dashboard</b></p></div>
+    <div class="top-actions"><span class="date-display" id="today"></span><span class="avatar" id="profile-initial" aria-label="Signed-in profile">L</span></div></header>
+    <div id="page-content" class="page-content"><div class="loading"><i></i>Gathering your library…</div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+  <dialog id="book-dialog" class="book-dialog" aria-labelledby="dialog-title"><button class="dialog-close" aria-label="Close details">×</button><div id="dialog-content"></div></dialog>
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title"><h3 id="confirm-title">Borrow this title?</h3><p id="confirm-copy"></p><div class="dialog-actions"><button class="button button-quiet" id="cancel-borrow">Cancel</button><button class="button button-primary" id="confirm-borrow">Confirm borrow</button></div></dialog>
+</body></html>
