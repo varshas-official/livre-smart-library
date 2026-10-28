@@ -87,8 +87,8 @@ class DSAStructureTests(unittest.TestCase):
             get_db().execute("UPDATE books SET available_copies=1 WHERE id=1")
         self.assertEqual(second_client.post("/api/borrowings", json={"book_id": 1}).status_code, 400)
         self.assertEqual(self.client.post("/api/borrowings", json={"book_id": 1}).status_code, 201)
-        second_reservation = second_client.post("/api/reservations", json={"book_id": 1})
-        self.assertEqual(second_reservation.status_code, 201 if second_reservation.json.get("reservation_id") else 409)
+        duplicate = second_client.post("/api/reservations", json={"book_id": 1})
+        self.assertEqual(duplicate.status_code, 409)
         self.assertEqual(second_client.delete("/api/reservations/2").status_code, 200)
 
 
