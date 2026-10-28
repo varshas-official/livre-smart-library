@@ -9,6 +9,7 @@ from werkzeug.exceptions import HTTPException
 from database import get_db, init_app as init_database, init_db
 from seed import seed_database
 from services import AuthenticationService, CatalogService, BorrowingService, ReportService
+from dsa_algorithms import FIFOQueue, build_book_hash_index, build_title_bst, merge_sort, resolve_book_lookup_key
 
 BASE = Path(__file__).resolve().parent.parent
 load_dotenv(BASE / ".env")
@@ -146,6 +147,135 @@ def create_app(test_config=None):
         if error:return error
         report=ReportService(get_db()).data(start,end); output=io.StringIO(); writer=csv.DictWriter(output,fieldnames=["id","borrowed_at","due_at","returned_at","status","full_name","username","title","authors"]);writer.writeheader();writer.writerows(report["records"])
         return Response(output.getvalue(),mimetype="text/csv",headers={"Content-Disposition":"attachment; filename=livre-borrowing-report.csv"})
+    def pending_reservation_queue(db, book_id):
+        rows = [dict(row) for row in db.execute("SELECT id,user_id,book_id,requested_at,status FROM reservations WHERE book_id=? AND status='pending' ORDER BY id",(book_id,)).fetchall()]
+        queue = FIFOQueue(max(1, len(rows)))
+        for row in rows:
+            queue.enqueue(row)
+        return queue
+
+    @app.get("/api/reservations")
+    @login_required
+    def list_reservations():
+        db = get_db()
+        pending_rows = [dict(row) for row in db.execute("SELECT id,user_id,book_id FROM reservations WHERE status='pending' ORDER BY id").fetchall()]
+        by_book = {}
+        for row in pending_rows:
+            by_book.setdefault(row["book_id"], []).append(row)
+        positions = {}
+        for rows in by_book.values():
+            queue = FIFOQueue(max(1, len(rows)))
+            for row in rows:
+                queue.enqueue(row)
+            for position, row in enumerate(queue.to_list(), start=1):
+                positions[row["id"]] = position
+        rows = db.execute("SELECT r.id,r.book_id,r.requested_at,r.status,r.fulfilled_borrow_id,b.title,b.authors,b.available_copies FROM reservations r JOIN books b ON b.id=r.book_id WHERE r.user_id=? ORDER BY r.id DESC",(session["user_id"],)).fetchall()
+        items = []
+        for row in rows:
+            item = dict(row)
+            item["queue_position"] = positions.get(item["id"])
+            items.append(item)
+        return jsonify(items=items)
+
+    @app.post("/api/reservations")
+    @login_required
+    def create_reservation():
+        data = request.get_json(silent=True) or {}
+        try:
+            book_id = int(data.get("book_id"))
+        except (TypeError, ValueError):
+            return jsonify(error="A valid book ID is required."), 400
+        db = get_db()
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            book = db.execute("SELECT id,available_copies FROM books WHERE id=?",(book_id,)).fetchone()
+            if not book:
+                db.rollback()
+                return jsonify(error="Book not found."),404
+            active = db.execute("SELECT id FROM borrow_records WHERE user_id=? AND book_id=? AND status='active'",(session["user_id"],book_id)).fetchone()
+            if active:
+                db.rollback()
+                return jsonify(error="You already have this book on loan."),409
+            pending = db.execute("SELECT id FROM reservations WHERE user_id=? AND book_id=? AND status='pending'",(session["user_id"],book_id)).fetchone()
+            if pending:
+                db.rollback()
+                return jsonify(error="You already have a pending reservation for this title."),409
+            queue = pending_reservation_queue(db, book_id)
+            if book["available_copies"] > 0 and len(queue) == 0:
+                db.rollback()
+                return jsonify(error="This title is available. Borrow it directly instead of joining the queue."),409
+            db.execute("INSERT INTO reservations(user_id,book_id,status) VALUES(?,?,'pending')",(session["user_id"],book_id))
+            reservation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+            position = len(queue) + 1
+            db.commit()
+            return jsonify(message="You joined the reservation queue.",reservation_id=reservation_id,queue_position=position),201
+        except Exception:
+            db.rollback()
+            raise
+
+    @app.delete("/api/reservations/<int:reservation_id>")
+    @login_required
+    def cancel_reservation(reservation_id):
+        db = get_db()
+        changed = db.execute("UPDATE reservations SET status='cancelled' WHERE id=? AND user_id=? AND status='pending'",(reservation_id,session["user_id"])).rowcount
+        if not changed:
+            return jsonify(error="Pending reservation not found."),404
+        return jsonify(message="Reservation cancelled.")
+
+    @app.get("/api/dsa/lookup")
+    @login_required
+    def dsa_book_lookup():
+        raw_key = (request.args.get("key") or "").strip()
+        if not raw_key:
+            return jsonify(error="Enter a book ID or ISBN. Prefix with ID: or ISBN: if needed."),400
+        rows = [dict(row) for row in get_db().execute("SELECT * FROM books").fetchall()]
+        table = build_book_hash_index(rows)
+        resolved_key = resolve_book_lookup_key(raw_key)
+        book, comparisons = table.get_with_comparisons(resolved_key)
+        return jsonify(found=book is not None,book=book,lookup_key=resolved_key,lookup_comparisons=comparisons,
+                       indexed_books=len(rows),indexed_keys=len(table),hash_collisions=table.collisions,
+                       complexity="Building the index is O(B); lookup is expected O(1), worst-case O(B) after build.")
+
+    @app.get("/api/dsa/catalogue")
+    @login_required
+    def dsa_bst_catalogue():
+        try:
+            limit = min(60,max(1,int(request.args.get("limit",60))))
+        except ValueError:
+            return jsonify(error="Limit must be a whole number."),400
+        rows = [dict(row) for row in get_db().execute("SELECT * FROM books").fetchall()]
+        tree = build_title_bst(rows)
+        ordered = tree.in_order()
+        return jsonify(items=ordered[:limit],total=len(ordered),bst_nodes=tree.node_count,
+                       bst_height=tree.height(),insert_comparisons=tree.insert_comparisons,
+                       complexity="In-order traversal is O(B); unbalanced BST insertion is O(B log B) on average and O(B^2) in the worst case.")
+
+    @app.get("/api/dsa/analysis")
+    @login_required
+    def dsa_analysis():
+        db = get_db()
+        rows = [dict(row) for row in db.execute("SELECT * FROM books").fetchall()]
+        if not rows:
+            return jsonify(error="The catalogue is empty."),404
+        target = rows[-1]
+        linear_comparisons = 0
+        for row in rows:
+            linear_comparisons += 1
+            if int(row["id"]) == int(target["id"]):
+                break
+        table = build_book_hash_index(rows)
+        _, hash_comparisons = table.get_with_comparisons("id:"+str(int(target["id"])))
+        tree = build_title_bst(rows)
+        sorted_by_merge, merge_comparisons = merge_sort(rows,key=lambda row:(str(row.get("title","")).casefold(),int(row["id"])))
+        report_metrics = ReportService(db).data().get("dsa_metrics",{})
+        return jsonify(catalogue_count=len(rows),target_title=target["title"],target_book_id=target["id"],
+                       linear_search_comparisons=linear_comparisons,hash_lookup_comparisons=hash_comparisons,
+                       hash_index_build_records=len(rows),hash_collisions=table.collisions,
+                       bst_nodes=tree.node_count,bst_height=tree.height(),bst_insert_comparisons=tree.insert_comparisons,
+                       merge_sort_comparisons=merge_comparisons,merge_sort_preview=sorted_by_merge[:10],
+                       report_merge_sort_comparisons=report_metrics.get("popular_sort_comparisons",0),
+                       note="Hash lookup comparisons exclude the one-time O(B) index-construction cost.")
+
     @app.get("/api/dashboard")
     @login_required
     def dashboard():
