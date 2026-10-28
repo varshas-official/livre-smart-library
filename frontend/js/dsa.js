@@ -51,6 +51,8 @@ document.body.addEventListener('click', async function (event) {
     try {
       const result = await api('/api/reservations', { method: 'POST', body: JSON.stringify({ book_id: Number(reserveButton.dataset.reserve) }) });
       notify(result.message + ' Queue position: ' + result.queue_position + '.', false);
+      const bookDialog = document.querySelector('#book-dialog');
+      if (bookDialog && bookDialog.open) bookDialog.close();
       if (location.hash === '#dsa') await window.loadDSAPage();
       else if (typeof route === 'function') await route();
     } catch (error) {
