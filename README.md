@@ -62,6 +62,18 @@ Before setup, replace `SECRET_KEY` in `.env` with a long random local value. Ope
 
 `flask init-db` creates and seeds the SQLite file at `backend/instance/library.sqlite3` by default. Set `DATABASE_PATH` to use another path. Seeding is safe to repeat; the required Ali Bahrami title and attribution are preserved exactly as requested, with edition, publisher, and ISBN left blank because the bibliographic record could not be verified under that exact title.
 
+## DSA Lab extension
+
+The DSA Lab page (#dsa) demonstrates four explicitly implemented algorithms/data structures:
+
+- backend/dsa_algorithms.py contains a separate-chaining hash table for exact book-ID/ISBN lookup, a binary search tree for title ordering, a circular array FIFO queue for reservation ordering, and stable Merge Sort with comparison counting.
+- Unavailable books can be placed on a persistent reservation queue. The first pending requester has borrowing priority when stock becomes available; later requesters cannot bypass the queue. Pending requests can be cancelled.
+- /api/dsa/lookup, /api/dsa/catalogue, and /api/dsa/analysis provide demonstrations and operation counts. Hash-index construction is reported separately from lookup complexity.
+- Popular-title report rows are sorted by the custom Merge Sort rather than delegated to SQL ORDER BY.
+- The database schema creates the reservations table and pending-request indexes when flask init-db or WSGI database initialization is run.
+
+The SQLite table is the durable reservation record; the custom queue is rebuilt from pending rows in ID order when a queue operation is needed. Thus the in-memory queue operation is O(Q) to hydrate from persistent rows plus O(1) per enqueue/dequeue. The BST is intentionally unbalanced, so insertion is O(B log B) on average and O(B^2) in the worst case. These limitations are surfaced in the UI rather than hidden.
+
 ## Tests
 
 ```powershell

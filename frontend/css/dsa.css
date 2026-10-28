@@ -1,0 +1,15 @@
+
+.dsa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.dsa-panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;min-width:0;box-shadow:var(--shadow)}
+.dsa-panel h2{font:22px/1.25 'DM Serif Display',Georgia,serif;color:var(--forest);margin:7px 0 8px}
+.dsa-panel p{font-size:12px;line-height:1.6;color:var(--muted)}
+.dsa-eyebrow{font-size:9px;letter-spacing:.16em;font-weight:700;color:var(--terra-ink)}
+.dsa-form{display:grid;gap:8px;margin-top:18px}.dsa-form label{font-size:11px;font-weight:700}.dsa-input-row{display:flex;gap:8px}.dsa-input-row input{min-width:0;flex:1;border:1px solid var(--border);border-radius:8px;padding:11px;font-size:12px}.dsa-form small{font-size:10px;color:var(--muted)}
+.dsa-result{margin-top:14px;background:#f7f4ec;border:1px solid var(--border);border-radius:9px;padding:13px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.dsa-result p{margin:5px 0}
+.dsa-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:15px 0}.dsa-metrics.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dsa-metrics>div{background:#f7f4ec;border:1px solid var(--border);border-radius:9px;padding:12px;min-width:0}.dsa-metrics small,.dsa-metrics span{display:block;color:var(--muted);font-size:10px}.dsa-metrics strong{display:block;font:27px 'DM Serif Display',Georgia,serif;color:var(--forest);margin:5px 0}
+.dsa-note{font-size:10px!important;background:#f7f4ec;padding:10px;border-radius:7px}.dsa-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-top:12px}.dsa-table-wrap .data-table{min-width:500px;background:white}.dsa-table-wrap .data-table td,.dsa-table-wrap .data-table th{padding:10px 12px}.dsa-table-wrap .data-table td:first-child{white-space:nowrap}
+.dsa-reservations{grid-column:1/-1}.dsa-empty{padding:18px;background:#f7f4ec;border-radius:8px;font-size:12px;color:var(--muted)}
+.dsa-panel .button{white-space:nowrap}
+@media(max-width:850px){.dsa-grid{grid-template-columns:1fr}.dsa-reservations{grid-column:auto}}
+@media(max-width:500px){.dsa-panel{padding:14px}.dsa-input-row{flex-direction:column}.dsa-input-row .button{width:100%}.dsa-metrics.three{grid-template-columns:1fr 1fr}.dsa-panel h2{font-size:20px}}

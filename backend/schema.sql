@@ -37,3 +37,17 @@ CREATE INDEX IF NOT EXISTS idx_books_title ON books(title COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
 CREATE INDEX IF NOT EXISTS idx_borrow_user_status ON borrow_records(user_id,status);
 CREATE INDEX IF NOT EXISTS idx_borrow_dates ON borrow_records(borrowed_at,due_at);
+
+
+-- DSA extension: persistent FIFO reservation requests for unavailable titles.
+CREATE TABLE IF NOT EXISTS reservations (
+ id INTEGER PRIMARY KEY,
+ user_id INTEGER NOT NULL REFERENCES users(id),
+ book_id INTEGER NOT NULL REFERENCES books(id),
+ requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ status TEXT NOT NULL CHECK(status IN ('pending','fulfilled','cancelled')),
+ fulfilled_borrow_id INTEGER REFERENCES borrow_records(id)
+);
+CREATE INDEX IF NOT EXISTS idx_reservations_book_status_id ON reservations(book_id,status,id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_one_pending_per_user_book
+ ON reservations(user_id,book_id) WHERE status='pending';
