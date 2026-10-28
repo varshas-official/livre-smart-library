@@ -149,7 +149,7 @@ def create_app(test_config=None):
         return Response(output.getvalue(),mimetype="text/csv",headers={"Content-Disposition":"attachment; filename=livre-borrowing-report.csv"})
     def pending_reservation_queue(db, book_id):
         rows = [dict(row) for row in db.execute("SELECT id,user_id,book_id,requested_at,status FROM reservations WHERE book_id=? AND status='pending' ORDER BY id",(book_id,)).fetchall()]
-        queue = FIFOQueue(max(1, len(rows)))
+        queue = FIFOQueue(max(1, len(rows) + 1))
         for row in rows:
             queue.enqueue(row)
         return queue
@@ -206,7 +206,8 @@ def create_app(test_config=None):
                 return jsonify(error="This title is available. Borrow it directly instead of joining the queue."),409
             db.execute("INSERT INTO reservations(user_id,book_id,status) VALUES(?,?,'pending')",(session["user_id"],book_id))
             reservation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-            position = len(queue) + 1
+            queue.enqueue({"id":reservation_id,"user_id":session["user_id"],"book_id":book_id,"status":"pending"})
+            position = len(queue)
             db.commit()
             return jsonify(message="You joined the reservation queue.",reservation_id=reservation_id,queue_position=position),201
         except Exception:
@@ -230,7 +231,10 @@ def create_app(test_config=None):
             return jsonify(error="Enter a book ID or ISBN. Prefix with ID: or ISBN: if needed."),400
         rows = [dict(row) for row in get_db().execute("SELECT * FROM books").fetchall()]
         table = build_book_hash_index(rows)
-        resolved_key = resolve_book_lookup_key(raw_key)
+        try:
+            resolved_key = resolve_book_lookup_key(raw_key)
+        except (ValueError, TypeError):
+            return jsonify(error="Use a valid book ID such as ID:12 or an ISBN value."),400
         book, comparisons = table.get_with_comparisons(resolved_key)
         return jsonify(found=book is not None,book=book,lookup_key=resolved_key,lookup_comparisons=comparisons,
                        indexed_books=len(rows),indexed_keys=len(table),hash_collisions=table.collisions,
