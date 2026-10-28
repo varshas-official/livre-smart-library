@@ -13,6 +13,8 @@ class DSAStructureTests(unittest.TestCase):
         table.insert("ID:1", {"id": 1})
         table.insert("ID:2", {"id": 2})
         table.insert("ID:3", {"id": 3})
+        table.insert("ID:4", {"id": 4})
+        self.assertGreaterEqual(table.collisions, 1)
         self.assertEqual(table.get("id:1")["id"], 1)
         self.assertEqual(table.get("missing"), None)
         table.insert("id:1", {"id": 10})
